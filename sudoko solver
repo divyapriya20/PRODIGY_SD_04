@@ -6,7 +6,7 @@ public class Sudoku implements ActionListener {
     char[][] board = new char[9][9];
     JTextField[] cells = new JTextField[81];
     JButton solve = new JButton("AI Solve");
-    JButton checker = new JButton("Check");
+    JButton checker = new JButton("Validate Board");
 
     Sudoku() {
         JPanel box = new JPanel(new GridLayout(9, 9));
@@ -14,23 +14,35 @@ public class Sudoku implements ActionListener {
 
         for (int i = 0; i < 81; i++) {
             cells[i] = new JTextField();
-            cells[i].setBackground(Color.cyan);
+            cells[i].setBackground(Color.WHITE);
             cells[i].setHorizontalAlignment(JTextField.CENTER);
             cells[i].setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
-            cells[i].setFont(new Font("Bahnschrift", Font.BOLD, 30));
+            cells[i].setFont(new Font("Arial", Font.BOLD, 24));
+            cells[i].addKeyListener(new KeyAdapter() {
+                public void keyTyped(KeyEvent e) {
+                    char ch = e.getKeyChar();
+                    if (!Character.isDigit(ch) || ch == '0') {
+                        e.consume();
+                    }
+                }
+            });
+
             box.add(cells[i]);
         }
 
         JFrame frame = new JFrame("Sudoku Solver");
         frame.setLayout(new BorderLayout());
         frame.add(box, BorderLayout.CENTER);
-        frame.add(solve, BorderLayout.SOUTH);
-        frame.add(checker, BorderLayout.NORTH);
-        
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(solve);
+        buttonPanel.add(checker);
+        frame.add(buttonPanel, BorderLayout.SOUTH);
+
         solve.addActionListener(this);
         checker.addActionListener(this);
-        
-        frame.setSize(800, 800);
+
+        frame.setSize(600, 700);
         frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
@@ -58,8 +70,17 @@ public class Sudoku implements ActionListener {
 
     boolean isValid(char[][] board, int row, int col, char num) {
         for (int i = 0; i < 9; i++) {
-            if (board[row][i] == num || board[i][col] == num || board[row / 3 * 3 + i / 3][col / 3 * 3 + i % 3] == num) {
+            if (board[row][i] == num || board[i][col] == num) {
                 return false;
+            }
+        }
+        
+        int boxRow = (row / 3) * 3, boxCol = (col / 3) * 3;
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                if (board[boxRow + i][boxCol + j] == num) {
+                    return false;
+                }
             }
         }
         return true;
@@ -67,8 +88,8 @@ public class Sudoku implements ActionListener {
 
     void loadBoardFromUI() {
         for (int i = 0; i < 81; i++) {
-            String text = cells[i].getText();
-            board[i / 9][i % 9] = (text.isEmpty() || !Character.isDigit(text.charAt(0))) ? '.' : text.charAt(0);
+            String text = cells[i].getText().trim();
+            board[i / 9][i % 9] = (text.isEmpty()) ? '.' : text.charAt(0);
         }
     }
 
@@ -78,10 +99,43 @@ public class Sudoku implements ActionListener {
         }
     }
 
+    boolean validateBoard() {
+        for (int row = 0; row < 9; row++) {
+            boolean[] rowCheck = new boolean[9];
+            boolean[] colCheck = new boolean[9];
+            boolean[] boxCheck = new boolean[9];
+
+            for (int col = 0; col < 9; col++) {
+                if (board[row][col] != '.') {
+                    int num = board[row][col] - '1';
+                    if (rowCheck[num]) return false;
+                    rowCheck[num] = true;
+                }
+                if (board[col][row] != '.') {
+                    int num = board[col][row] - '1';
+                    if (colCheck[num]) return false;
+                    colCheck[num] = true;
+                }
+                int boxRow = (row / 3) * 3 + col / 3;
+                int boxCol = (row % 3) * 3 + col % 3;
+                if (board[boxRow][boxCol] != '.') {
+                    int num = board[boxRow][boxCol] - '1';
+                    if (boxCheck[num]) return false;
+                    boxCheck[num] = true;
+                }
+            }
+        }
+        return true;
+    }
+
     @Override
     public void actionPerformed(ActionEvent e) {
+        loadBoardFromUI();
         if (e.getSource() == solve) {
-            loadBoardFromUI();
+            if (!validateBoard()) {
+                JOptionPane.showMessageDialog(null, "Invalid Sudoku input. Check for duplicates!");
+                return;
+            }
             if (solveBoard(board)) {
                 displaySolvedBoard();
                 JOptionPane.showMessageDialog(null, "Sudoku Solved Successfully!");
@@ -89,8 +143,11 @@ public class Sudoku implements ActionListener {
                 JOptionPane.showMessageDialog(null, "No solution exists!");
             }
         } else if (e.getSource() == checker) {
-            loadBoardFromUI();
-            JOptionPane.showMessageDialog(null, "Board loaded for validation (Add more validation logic if needed)!");
+            if (validateBoard()) {
+                JOptionPane.showMessageDialog(null, "Valid Sudoku configuration!");
+            } else {
+                JOptionPane.showMessageDialog(null, "Invalid Sudoku configuration! Check for duplicates.");
+            }
         }
     }
 
